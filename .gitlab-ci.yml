@@ -1,0 +1,30 @@
+before_script:
+  - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+  - eval $(ssh-agent -s)
+  - ssh-add <(echo "$SSH_PRIVATE_KEY")
+  - mkdir -p ~/.ssh
+  - '[[ -f /.dockerenv ]] && echo -e "Host *\\n\\tStrictHostKeyChecking no\\n\\n" > ~/.ssh/config'
+image: node
+##缓存 node_modules/目录 下次构建不会删除
+cache:
+  paths:
+  - node_modules/
+stages: # Stages 表示构建阶段，这里有两个阶段 install, deploy
+  - prepare
+  - deploy
+
+fetch: # Jobs 表示构建工作，表示某个 Stage 里面执行的工作。
+  stage: prepare
+  script:
+    - echo "=====start fetch======"
+    - cd /builds/0003651/extandai/
+  only:
+    - develop
+    
+deploy-static:
+  stage: deploy
+  script:
+    - npm i
+    - npm run build 
+    - scp -r /builds/0003651/extandai/dist root@$DEPLOY_SERVER_DEV:$WEB_DIR
+    - echo "=====start deploy======"
